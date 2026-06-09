@@ -5,6 +5,30 @@ let topZIndex = 10;
 //for overlaps sake, create a unique function name for JS in apps
 const apps = [
     {
+        name: 'Apps',
+        content: `<div>
+            <div id="app-launcher" style="display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 10px;  width: 100%; height: 100%; padding: 10px; box-sizing: border-box;"></div>
+        </div>`,
+        icon: '🗂️',
+        onload: (id) => {
+            new App().getApps().forEach(app => {
+                if (app.name === "Apps") return; // Don't show the Apps app in the launcher
+                const button = document.createElement('button');
+                button.textContent = app.icon;
+                button.appendChild(document.createElement('span')).textContent = app.name;
+                button.classList.add('launcher-button');
+                button.title = app.name;
+                document.getElementById('app-launcher').appendChild(button);
+                button.addEventListener('click', () => {
+                    new App().launchApp(app);
+                    closeWindow(id);
+                });
+            });
+        },
+        position: { x: 0, y: 0.9 * window.innerHeight - 300 },
+        size: { width: 400, height: 300 }
+    },
+    {
         name: 'Text Editor',
         content: '<textarea id="text-editor" style="width: 100%; height: 100%; border: none; resize: none;">This is a simple text editor. You can type here...</textarea>',
         icon: '📝'
@@ -69,6 +93,24 @@ const apps = [
             <button onclick="new Wallpaper().createWallpaper(document.getElementById('wallpaper-url').value)">Set Wallpaper</button>
         </div>`,
         icon: '🖼️'
+    },
+    {
+        name: 'settings',
+        content: `<div>
+            <button onclick="new Settings().toggleDarkMode()">Toggle Dark Mode</button>
+        </div>`,
+        icon: '⚙️',
+        size: { width: 400, height: 300 }
+    },
+    {
+        name: 'About',
+        content: `<div>
+            <h2>About PersonalOS</h2>
+            <p>PersonalOS is a simple desktop environment built with JavaScript. It features a windowing system, a taskbar, and a few basic apps like a text editor, calculator, and wallpaper manager.</p>
+            <p>Created by Jackson Szekeres.</p>
+        </div>`,
+        icon: 'ℹ️',
+        size: { width: 400, height: 300 }
     }
 ];
 
@@ -97,18 +139,63 @@ class Wallpaper {
     }
 }
 
+class Settings {
+    toggleDarkMode() {
+        document.body.classList.toggle('dark-mode');
+    }
+}
+
+class App {
+    getApps() {
+        return apps;
+    }
+    launchApp(app) {
+        launchApp(app);
+    }
+}
+
+function getScreenSize() {
+    return {
+        width: document.querySelector('.screen').clientWidth,
+        height: document.querySelector('.screen').clientHeight
+    };
+}
 
 
 
-function createWindow(title, content, size = { width: 300, height: 200 }) {
+
+function createWindow(title, content, size = { width: 300, height: 200 }, position = null) {
     const id = `window-${crypto.randomUUID()}`;
     console.log(`Creating window: ${title}`);
     const window = document.createElement('div');
     window.classList.add('window');
     window.id = id;
 
-    const x = Math.random() * 400 + 50;
-    const y = Math.random() * 300 + 50;
+    let x = 50;
+    let y = 50;
+
+    if (!position) {
+        //find location for new window that doesn't overlap existing windows
+        const screenSize = getScreenSize();
+        const maxX = Math.max(0, screenSize.width - size.width);
+        const maxY = Math.max(0, screenSize.height - size.height);
+        out:
+        for (let i = 0; i <= maxX; i += 30) {
+            for (let j = 0; j <= maxY; j += 30) {
+                if (!windows.some(w => i < w.x + w.width && i + size.width > w.x && j < w.y + w.height && j + size.height > w.y)) {
+                    console.log(`Placing window at (${i}, ${j})`);
+                    x = i;
+                    y = j;
+                    break out;
+                }
+            }
+        }
+    } else {
+        x = position.x;
+        y = position.y;
+    }
+
+
     window.style.left = `${x}px`;
     window.style.top = `${y}px`;
 
@@ -124,11 +211,7 @@ function createWindow(title, content, size = { width: 300, height: 200 }) {
     closeButton.textContent = 'X';
     closeButton.classList.add('close-button');
     closeButton.addEventListener('click', () => {
-        window.remove();
-        const index = windows.findIndex(w => w.id === id);
-        if (index !== -1) {
-            windows.splice(index, 1);
-        }
+        closeWindow(id);
     });
     header.appendChild(closeButton);
 
@@ -188,6 +271,28 @@ function createWindow(title, content, size = { width: 300, height: 200 }) {
     return window;
 }
 
+function closeWindow(id) {
+    const win = windows.find(w => w.id === id);
+    if (win) {
+        win.element.remove();
+        windows.splice(windows.indexOf(win), 1);
+    }
+}
+
+function launchApp(app) {
+    if (windows.some(w => w.title === app.name)) {
+        const existingWindow = windows.find(w => w.title === app.name);
+        existingWindow.element.style.zIndex = topZIndex++;
+        return;
+    }
+    const win = createWindow(app.name, app.content, app.size, app.position);
+    document.querySelector('.screen').appendChild(win);
+
+    if (app.onload) {
+        app.onload.bind(null, win.id)();
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     const screen = document.querySelector('.screen');
     const taskbar = document.querySelector('.taskbar');
@@ -200,13 +305,7 @@ document.addEventListener('DOMContentLoaded', () => {
         button.classList.add('app-button');
         button.title = app.name;
         button.addEventListener('click', () => {
-            if (windows.some(w => w.title === app.name)) {
-                const existingWindow = windows.find(w => w.title === app.name);
-                existingWindow.element.style.zIndex = topZIndex++;
-                return;
-            }
-            const win = createWindow(app.name, app.content, app.size);
-            screen.appendChild(win);
+            launchApp(app);
         });
         appsContainer.appendChild(button);
     }
