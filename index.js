@@ -196,6 +196,7 @@ document.addEventListener('DOMContentLoaded', () => {
     for (const app of apps) {
         const button = document.createElement('button');
         button.textContent = app.icon;
+        button.appendChild(document.createElement('span')).textContent = app.name;
         button.classList.add('app-button');
         button.title = app.name;
         button.addEventListener('click', () => {
