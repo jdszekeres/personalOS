@@ -6,7 +6,7 @@ let topZIndex = 10;
 const apps = [
     {
         name: 'Text Editor',
-        content: '<p contenteditable="true">This is a simple text editor. You can type here...</p>',
+        content: '<textarea id="text-editor" style="width: 100%; height: 100%; border: none; resize: none;">This is a simple text editor. You can type here...</textarea>',
         icon: '📝'
     },
     {
@@ -46,7 +46,7 @@ const apps = [
                     text-align: right;
                 }
                     .calc-buttons button {
-                    padding: 10px;
+                    padding: 3px;
                     font-size: 18px;
                 }
             </style>
@@ -54,6 +54,21 @@ const apps = [
         
         `,
         icon: '🔢'
+    },
+    {
+        name: 'Wallpaper',
+        content: `<div>
+            <p>Click a photo below to set it as your wallpaper or type a URL:</p>
+            <div class="wallpaper-options">
+                <img src="https://jacksonszekeres.weebly.com/uploads/1/5/2/4/152497468/cardiff_orig.jpeg" style="width: 100px;" alt="Cardiff" onclick="new Wallpaper().createWallpaper('https://jacksonszekeres.weebly.com/uploads/1/5/2/4/152497468/cardiff_orig.jpeg')">
+                <img src="https://jacksonszekeres.weebly.com/uploads/1/5/2/4/152497468/img-9975_orig.jpg" style="width: 100px;" alt="Mountain 1" onclick="new Wallpaper().createWallpaper('https://jacksonszekeres.weebly.com/uploads/1/5/2/4/152497468/img-9975_orig.jpg')">
+                <img src="https://jacksonszekeres.weebly.com/uploads/1/5/2/4/152497468/img-9973_orig.jpg" style="width: 100px;" alt="Mountain 2" onclick="new Wallpaper().createWallpaper('https://jacksonszekeres.weebly.com/uploads/1/5/2/4/152497468/img-9973_orig.jpg')">
+                <img src="https://jacksonszekeres.weebly.com/uploads/1/5/2/4/152497468/idg-20251004-183007-543_orig.jpg" style="width: 100px;" alt="Sunset" onclick="new Wallpaper().createWallpaper('https://jacksonszekeres.weebly.com/uploads/1/5/2/4/152497468/idg-20251004-183007-543_orig.jpg')">
+            </div>
+            <input type="text" id="wallpaper-url" placeholder="Enter wallpaper URL">
+            <button onclick="new Wallpaper().createWallpaper(document.getElementById('wallpaper-url').value)">Set Wallpaper</button>
+        </div>`,
+        icon: '🖼️'
     }
 ];
 
@@ -73,6 +88,13 @@ class Calc {
                     display.value += value;
                 }
             }
+}
+
+class Wallpaper {
+    createWallpaper(imageUrl) {
+        const screen = document.querySelector('.screen');
+        screen.style.backgroundImage = `url(${imageUrl})`;
+    }
 }
 
 
@@ -140,6 +162,19 @@ function createWindow(title, content, size = { width: 300, height: 200 }) {
     window.appendChild(header);
     window.appendChild(contentElement);
 
+    const resizeObserver = new ResizeObserver((entries) => {
+        for (let entry of entries) {
+            if (entry.target === window) {
+                const win = windows.find(w => w.id === id);
+                if (win) {
+                    win.width = entry.contentRect.width;
+                    win.height = entry.contentRect.height;
+                }
+            }
+        }
+    });
+    resizeObserver.observe(window);
+
     windows.push({
         id,
         title,
@@ -162,6 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const button = document.createElement('button');
         button.textContent = app.icon;
         button.classList.add('app-button');
+        button.title = app.name;
         button.addEventListener('click', () => {
             if (windows.some(w => w.title === app.name)) {
                 const existingWindow = windows.find(w => w.title === app.name);
@@ -173,6 +209,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         appsContainer.appendChild(button);
     }
+
+    new Wallpaper().createWallpaper("https://jacksonszekeres.weebly.com/uploads/1/5/2/4/152497468/cardiff_orig.jpeg");
 
     setInterval(() => {
         const time = document.getElementById('time');

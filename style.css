@@ -31,6 +31,9 @@ html, body {
     background-color: #fff;
     overflow: hidden;
     z-index: 1;
+
+    background-size: cover;
+    background-position: center;
 }
 
 .clock {
@@ -47,6 +50,9 @@ html, body {
     box-sizing: border-box;
     cursor: move;
     z-index: 3;
+    overflow-y: scroll;
+
+    resize: both;
 }
 
 .window-header {
@@ -55,6 +61,8 @@ html, body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    position: sticky;
+    top: 0;
 }
 
 .app-button {
