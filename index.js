@@ -2,6 +2,13 @@ const windows = [];
 
 let topZIndex = 10;
 
+
+const taskbarApps = [
+    "Apps",
+    "Settings",
+    "About"
+];
+
 //for overlaps sake, create a unique function name for JS in apps
 const apps = [
     {
@@ -11,7 +18,7 @@ const apps = [
         </div>`,
         icon: '🗂️',
         onload: (id) => {
-            new App().getApps().forEach(app => {
+            new App().getApps().sort((a, b) => a.name.localeCompare(b.name)).forEach(app => {
                 if (app.name === "Apps") return; // Don't show the Apps app in the launcher
                 const button = document.createElement('button');
                 button.textContent = app.icon;
@@ -26,12 +33,14 @@ const apps = [
             });
         },
         position: { x: 0, y: 0.9 * window.innerHeight - 300 },
-        size: { width: 400, height: 300 }
+        size: { width: 400, height: 300 },
+        resizable: false
     },
     {
         name: 'Text Editor',
         content: '<textarea id="text-editor" style="width: 100%; height: 100%; border: none; resize: none;">This is a simple text editor. You can type here...</textarea>',
-        icon: '📝'
+        icon: '📝',
+        resizable: true
     },
     {
         name: 'Calculator',
@@ -77,7 +86,8 @@ const apps = [
         </div>
         
         `,
-        icon: '🔢'
+        icon: '🔢',
+        resizable: true
     },
     {
         name: 'Wallpaper',
@@ -92,15 +102,17 @@ const apps = [
             <input type="text" id="wallpaper-url" placeholder="Enter wallpaper URL">
             <button onclick="new Wallpaper().createWallpaper(document.getElementById('wallpaper-url').value)">Set Wallpaper</button>
         </div>`,
-        icon: '🖼️'
+        icon: '🖼️',
+        resizable: true
     },
     {
-        name: 'settings',
-        content: `<div>
-            <button onclick="new Settings().toggleDarkMode()">Toggle Dark Mode</button>
+        name: 'Settings',
+        content: `<div id="settings-app" style="display: flex; flex-direction: column; gap: 10px;">
+            <button class="settings-button" onclick="new Settings().toggleDarkMode()">Toggle Dark Mode</button>
         </div>`,
         icon: '⚙️',
-        size: { width: 400, height: 300 }
+        size: { width: 400, height: 300 },
+        resizable: true
     },
     {
         name: 'About',
@@ -110,7 +122,15 @@ const apps = [
             <p>Created by Jackson Szekeres.</p>
         </div>`,
         icon: 'ℹ️',
-        size: { width: 400, height: 300 }
+        size: { width: 400, height: 300 },
+        resizable: true
+    },
+    {
+        name: '2048',
+        content: `<iframe src="https://jackson.canyoncrest.academy/2048.html" style="width: 290px; height: 270px; border: none; overflow: hidden; padding: 0; margin: 0;"></iframe>`,
+        icon: '🎮',
+        size: { width: 300, height: 300 },
+        resizable: false
     }
 ];
 
@@ -141,7 +161,12 @@ class Wallpaper {
 
 class Settings {
     toggleDarkMode() {
-        document.body.classList.toggle('dark-mode');
+        localStorage.setItem('darkMode', localStorage.getItem('darkMode') === 'true' ? 'false' : 'true');
+        if (localStorage.getItem('darkMode') === 'true') {
+            document.body.classList.add('dark-mode');
+        } else {
+            document.body.classList.remove('dark-mode');   
+        }
     }
 }
 
@@ -161,10 +186,23 @@ function getScreenSize() {
     };
 }
 
+document.addEventListener('resize', () => {
+    const screenSize = getScreenSize();
+    windows.forEach(win => {
+        if (win.x + win.width > screenSize.width) {
+            win.x = screenSize.width - win.width;
+            win.element.style.left = `${win.x}px`;
+        }
+        if (win.y + win.height > screenSize.height) {
+            win.y = screenSize.height - win.height;
+            win.element.style.top = `${win.y}px`;
+        }
+    });
+});
 
 
 
-function createWindow(title, content, size = { width: 300, height: 200 }, position = null) {
+function createWindow(title, content, size = { width: 300, height: 200 }, position = null, resizable = true) {
     const id = `window-${crypto.randomUUID()}`;
     console.log(`Creating window: ${title}`);
     const window = document.createElement('div');
@@ -245,18 +283,23 @@ function createWindow(title, content, size = { width: 300, height: 200 }, positi
     window.appendChild(header);
     window.appendChild(contentElement);
 
-    const resizeObserver = new ResizeObserver((entries) => {
-        for (let entry of entries) {
-            if (entry.target === window) {
-                const win = windows.find(w => w.id === id);
-                if (win) {
-                    win.width = entry.contentRect.width;
-                    win.height = entry.contentRect.height;
+    if (resizable) {
+
+        window.style.resize = 'both';
+
+        const resizeObserver = new ResizeObserver((entries) => {
+            for (let entry of entries) {
+                if (entry.target === window) {
+                    const win = windows.find(w => w.id === id);
+                    if (win) {
+                        win.width = entry.contentRect.width;
+                        win.height = entry.contentRect.height;
+                    }
                 }
             }
-        }
-    });
-    resizeObserver.observe(window);
+        });
+        resizeObserver.observe(window);
+    }
 
     windows.push({
         id,
@@ -285,7 +328,7 @@ function launchApp(app) {
         existingWindow.element.style.zIndex = topZIndex++;
         return;
     }
-    const win = createWindow(app.name, app.content, app.size, app.position);
+    const win = createWindow(app.name, app.content, app.size, app.position, app.resizable);
     document.querySelector('.screen').appendChild(win);
 
     if (app.onload) {
@@ -298,14 +341,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const taskbar = document.querySelector('.taskbar');
     const appsContainer = document.querySelector('.apps');
 
-    for (const app of apps) {
+    for (const app of taskbarApps) {
+        const appInfo = apps.find(a => a.name === app);
+        if (!appInfo) continue;
         const button = document.createElement('button');
-        button.textContent = app.icon;
-        button.appendChild(document.createElement('span')).textContent = app.name;
+        button.textContent = appInfo.icon;
+        button.appendChild(document.createElement('span')).textContent = appInfo.name;
         button.classList.add('app-button');
-        button.title = app.name;
+        button.title = appInfo.name;
         button.addEventListener('click', () => {
-            launchApp(app);
+            launchApp(appInfo);
         });
         appsContainer.appendChild(button);
     }
@@ -325,4 +370,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const welcome = createWindow('Welcome', '<p>Welcome to PersonalOS! This is a simple desktop environment built with JavaScript.</p>');
     console.log(welcome);
     screen.appendChild(welcome);
+
+    if (localStorage.getItem('darkMode') === 'true') {
+        document.body.classList.add('dark-mode');
+    }
 });
