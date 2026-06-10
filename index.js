@@ -136,8 +136,6 @@ const apps = [
 
 //App Classes
 class Calc {
-
-
     appendCalc(value) {
         const display = document.getElementById('Calc-display');
         if (value === '=') {
@@ -362,9 +360,25 @@ document.addEventListener('DOMContentLoaded', () => {
         const now = new Date();
         const hours = String(now.getHours() % 12 || 12).padStart(2, '0');
         const minutes = String(now.getMinutes()).padStart(2, '0');
+        const seconds = String(now.getSeconds()).padStart(2, '0');
 
         const ampm = now.getHours() >= 12 ? 'PM' : 'AM';
-        time.textContent = `${hours}:${minutes} ${ampm}`;
+        time.textContent = `${hours}:${minutes}:${seconds} ${ampm}`;
+
+        const date = document.getElementById('date');
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const year = now.getFullYear();
+        date.textContent = `${month}/${day}/${year}`;
+
+        const batteryLevel = document.getElementById('battery-level');
+        if (navigator.getBattery) {
+            navigator.getBattery().then(battery => {
+                batteryLevel.textContent = `${Math.round(battery.level * 100)}%`;
+            });
+        } else {
+            batteryLevel.textContent = 'N/A';
+        }
     }, 1000);
 
     const welcome = createWindow('Welcome', '<p>Welcome to PersonalOS! This is a simple desktop environment built with JavaScript.</p>');
